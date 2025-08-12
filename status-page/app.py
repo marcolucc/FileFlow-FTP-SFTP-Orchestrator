@@ -13,7 +13,7 @@ from datetime import datetime
 app = Flask(__name__)
 
 CONTAINER_NAMES = ["ftp_server", "sftp_server", "file_forwarder"]
-ADMIN_PASSWORD = "Amendola2025!"
+ADMIN_PASSWORD = "[REDACTED]"
 
 FTP_USERS_TXT = "/ftp_config/virtual_users.txt"
 FTP_USER_CONF_DIR = "/ftp_config/user_conf/"

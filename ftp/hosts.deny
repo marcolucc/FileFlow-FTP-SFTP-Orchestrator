@@ -1,0 +1,5 @@
+
+# This file denies hosts. We will deny all hosts by default.
+# The rule in hosts.allow will be checked first, permitting the whitelisted IPs.
+
+vsftpd: ALL

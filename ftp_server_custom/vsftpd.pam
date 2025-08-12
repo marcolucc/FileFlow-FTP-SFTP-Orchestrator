@@ -1,0 +1,10 @@
+# /ftp/vsftpd.pam
+#
+# This is the Pluggable Authentication Module (PAM) configuration for vsftpd.
+# It tells the system HOW to authenticate the virtual users.
+#
+# The 'db' parameter points to the user database we create in the entrypoint script.
+# We remove the '.db' extension here as the module appends it automatically.
+
+auth    required pam_userdb.so db=/etc/vsftpd/virtual_users
+account required pam_userdb.so db=/etc/vsftpd/virtual_users

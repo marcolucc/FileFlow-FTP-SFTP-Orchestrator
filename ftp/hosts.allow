@@ -1,0 +1,6 @@
+
+# This file defines which hosts are allowed to connect.
+# The format is "daemon: IP, IP, ...".
+# vsftpd: is the daemon name.
+
+vsftpd: 0.0.0.0, 127.0.0.1, localhost, 

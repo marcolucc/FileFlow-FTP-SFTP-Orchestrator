@@ -1,0 +1,111 @@
+# docker-compose.yml
+#
+# Updated version to allow the status page to manage users.
+
+services:
+  #--------------------------------------------------------------------------
+  # FTP Server (vsftpd)
+  #--------------------------------------------------------------------------
+  ftp-server:
+    build: ./ftp_server_custom
+    container_name: ftp_server
+    ports:
+      - "21:21"
+      - "30000-30009:30000-30009"
+    environment:
+      - 'PASV_ADDRESS=1.1.1.1' # Make sure this is your public IP
+      - 'LOG_STDOUT=true'
+    volumes:
+      - ftp-data:/home/vsftpd/
+      - ./ftp/vsftpd.conf:/etc/vsftpd/vsftpd.conf
+      - ./ftp/user_conf:/etc/vsftpd/user_conf:ro
+      - ./ftp/virtual_users.txt:/etc/vsftpd/virtual_users.txt:ro
+      # NEW: Mounts the volume for log files.
+      - ftp-logs:/var/log/vsftpd
+    restart: always
+    depends_on:
+      - init-dirs
+
+  
+  #--------------------------------------------------------------------------
+  # Web Status Page
+  #--------------------------------------------------------------------------
+  status-page:
+    build: ./status-page
+    container_name: status_page
+    ports:
+      - "82:5000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ftp-data:/data:rw
+      - ./ftp:/ftp_config:rw
+      - ./sftp:/sftp_config:rw
+      # NEW: Mounts the FTP log volume as read-only.
+      - ftp-logs:/var/log/vsftpd:ro
+    restart: always
+
+  #--------------------------------------------------------------------------
+  # SFTP Server (emberstack/sftp)
+  #--------------------------------------------------------------------------
+  sftp-server:
+    image: emberstack/sftp:latest
+    container_name: sftp_server
+    ports:
+      - "2222:22"
+    volumes:
+      - ftp-data:/home
+      - ./sftp/sftp.json:/app/config/sftp.json:ro
+    restart: always
+    depends_on:
+      - init-dirs
+      - fix-permissions
+
+
+  #--------------------------------------------------------------------------
+  # File Forwarder Service
+  #--------------------------------------------------------------------------
+  file-forwarder:
+    build: ./forwarder
+    container_name: file_forwarder
+    environment:
+      - 'DEST_FTP_HOST=your_ftp_host'
+      - 'DEST_FTP_USER=your_ftp_user'
+      - 'DEST_FTP_PASS=your_ftp_password' # REMOVED SENSITIVE DATA
+    volumes:
+      - ftp-data:/data:ro
+    restart: always
+    depends_on:
+      - init-dirs
+
+
+
+  #--------------------------------------------------------------------------
+  # Folder Initialization Service
+  #--------------------------------------------------------------------------
+  init-dirs:
+    image: alpine:latest
+    container_name: init_dirs
+    command: >
+      sh -c "echo 'Creating folder structure...' && mkdir -p /data/appo /data/arkas /data/BsqTest /data/cma/APPO /data/CmaTerminal /data/cosco/copia /data/dhl/copia /data/customer1/filescma /data/HapagJas /data/hlagterminal/codeco/copia /data/hlagterminal/codeco/'New folder' /data/lettereVett /data/maersk/APPO /data/nimporta /data/one/copia /data/oocl/coparn /data/oocl/copia /data/test/Documenti /data/ftpuser /data/hlagt /data/new_user && echo 'Structure created.'"
+    volumes:
+      - ftp-data:/data
+
+  #--------------------------------------------------------------------------
+  # Directory Permissions Fix Service
+  #--------------------------------------------------------------------------
+  fix-permissions:
+    image: alpine:latest
+    container_name: fix_permissions
+    command: >
+      sh -c "chmod 755 /home && find /home -type d -exec chmod 755 {} \; && find /home -type f -exec chmod 644 {} \; && echo 'Permissions fixed.'"
+    volumes:
+      - ftp-data:/home
+
+volumes:
+  ftp-data:
+    driver: local
+  sftp-keys:
+    driver: local
+  # NEW: Defines the volume for logs.
+  ftp-logs:
+    driver: local

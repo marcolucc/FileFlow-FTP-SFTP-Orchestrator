@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stato dei Servizi FTP/SFTP</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap');
+        .status-dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; margin-right: 8px; }
+        .status-running { background-color: #22c55e; }
+        .status-exited { background-color: #ef4444; }
+        .status-restarting { background-color: #eab308; }
+        .status-not_found { background-color: #6b7280; }
+        .modal { transition: opacity 0.3s ease; }
+        .hidden-section { display: none; }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-200">
+    <div class="container mx-auto p-4 md:p-8">
+        <header class="mb-8 text-center">
+            <h1 class="text-4xl font-bold text-white">Stato dei Servizi FTP/SFTP</h1>
+            <p class="text-gray-400 mt-2">Dashboard di monitoraggio in tempo reale.</p>
+        </header>
+
+        <!-- Sezione indirizzi FTP e SFTP -->
+        <div class="bg-gray-800 rounded-lg shadow-lg p-6 mb-8">
+            <h2 class="text-2xl font-semibold mb-4 border-b border-gray-700 pb-2">Indirizzi FTP e SFTP</h2>
+            <div class="flex justify-between items-center">
+                <div>
+                    <p class="text-gray-400">Indirizzo FTP:</p>
+                    <p id="ftp-address" class="text-white font-bold">ftp.amendolatech.com</p>
+                </div>
+                <div>
+                    <p class="text-gray-400">Porta FTP:</p>
+                    <p id="ftp-port" class="text-white font-bold">21</p>
+                </div>
+                <div>
+                    <p class="text-gray-400">Indirizzo SFTP:</p>
+                    <p id="sftp-address" class="text-white font-bold">sftp.amendolatech.com</p>
+                </div>
+                <div>
+                    <p class="text-gray-400">Porta SFTP:</p>
+                    <p id="sftp-port" class="text-white font-bold">2222</p>
+                </div>
+                <div>
+                    <p class="text-gray-400">IP Server:</p>
+                    <p id="server-ip" class="text-white font-bold">31.97.37.195</p>
+                </div>
+            </div>
+        </div>
+         
+
+        <!-- Sezione Stato Servizi -->
+        <div class="bg-gray-800 rounded-lg shadow-lg p-6 mb-8">
+            <h2 class="text-2xl font-semibold mb-4 border-b border-gray-700 pb-2">Stato dei Container</h2>
+            <div id="status-grid" class="grid grid-cols-1 md:grid-cols-3 gap-4"></div>
+        </div>
+        
+        <!-- Sezione Spazio disponibile su disco -->
+        <div class="bg-gray-800 rounded-lg shadow-lg p-6 mb-8">
+            <h2 class="text-2xl font-semibold mb-4 border-b border-gray-700 pb-2">Spazio disponibile su disco</h2>
+            <div id="disk-space-info" class="text-gray-300 space-y-4">
+                <!-- I dati verranno inseriti qui da JavaScript -->
+                <p>Recupero informazioni...</p>
+                <div class="hidden" id="disk-space-chart">
+                    <div class="w-full bg-gray-700 rounded-full h-4 mb-2">
+                        <div id="disk-usage-bar" class="bg-blue-600 h-4 rounded-full" style="width: 0%"></div>
+                    </div>
+                    <div class="flex justify-between text-sm text-gray-400">
+                        <span>0%</span>
+                        <span>50%</span>
+                        <span>100%</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sezione Azioni Amministrative -->
+        <div class="bg-gray-800 rounded-lg shadow-lg p-6 mb-8">
+            <h2 class="text-2xl font-semibold mb-4 border-b border-gray-700 pb-2">Azioni Amministrative</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <!-- Bottone Riavvio -->
+                <div class="flex flex-col space-y-2">
+                    <label for="restart-select" class="text-sm font-medium text-gray-400">Riavvia un Servizio</label>
+                    <div class="flex">
+                        <select id="restart-select" class="bg-gray-700 border-gray-600 text-white rounded-l-lg w-full p-2">
+                            <option value="ftp_server">Server FTP</option>
+                            <option value="sftp_server">Server SFTP</option>
+                            <option value="file_forwarder">Inoltratore File</option>
+                        </select>
+                        <button data-action="restart_service" class="admin-action-btn bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 rounded-r-lg">Esegui</button>
+                    </div>
+                </div>
+                <!-- Bottone Pausa/Ripresa -->
+                <div class="flex flex-col space-y-2">
+                     <label class="text-sm font-medium text-gray-400">Controlla Inoltratore</label>
+                     <button id="toggle-forwarder-btn" data-action="toggle_forwarder" class="admin-action-btn bg-yellow-600 hover:bg-yellow-700 text-white font-bold p-2 rounded-lg w-full">Pausa Inoltro</button>
+                </div>
+                <!-- Bottone Log Completi -->
+                <div class="flex flex-col space-y-2">
+                    <label for="logs-select" class="text-sm font-medium text-gray-400">Mostra Log Completi</label>
+                    <div class="flex">
+                        <select id="logs-select" class="bg-gray-700 border-gray-600 text-white rounded-l-lg w-full p-2">
+                            <option value="ftp_server">Server FTP</option>
+                            <option value="sftp_server">Server SFTP</option>
+                            <option value="file_forwarder">Inoltratore File</option>
+                        </select>
+                        <button data-action="get_full_logs" class="admin-action-btn bg-green-600 hover:bg-green-700 text-white font-bold px-4 rounded-r-lg">Mostra</button>
+                    </div>
+                </div>
+                <!-- Bottone Pulizia File -->
+                <div class="flex flex-col space-y-2">
+                    <label class="text-sm font-medium text-gray-400">Pulisci Volume Dati</label>
+                    <button data-action="clear_files" class="admin-action-btn bg-red-600 hover:bg-red-700 text-white font-bold p-2 rounded-lg w-full">Pulisci Tutti i File</button>
+                </div>
+                 <!-- Bottone Gestione Utenti -->
+                <div class="flex flex-col space-y-2">
+                    <label class="text-sm font-medium text-gray-400">Gestione Utenti</label>
+                    <button data-action="manage_users" class="admin-action-btn bg-purple-600 hover:bg-purple-700 text-white font-bold p-2 rounded-lg w-full">Apri Gestione Utenti</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sezione Gestione Utenti (nascosta di default) -->
+        <div id="user-management-section" class="hidden-section bg-gray-800 rounded-lg shadow-lg p-6 mb-8">
+            <!-- Gestione Utenti FTP -->
+            <div class="mb-8">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-semibold">Utenti FTP</h3>
+                    <button id="add-ftp-user-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg">Aggiungi Utente FTP</button>
+                </div>
+                <table class="w-full text-sm text-left text-gray-400">
+                    <thead class="text-xs text-gray-300 uppercase bg-gray-700">
+                        <tr>
+                            <th scope="col" class="px-6 py-3">Username</th>
+                            <th scope="col" class="px-6 py-3">Password</th>
+                            <th scope="col" class="px-6 py-3">Cartella Home</th>
+                            <th scope="col" class="px-6 py-3">Azioni</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ftp-users-table"></tbody>
+                </table>
+            </div>
+            <!-- Gestione Utenti SFTP -->
+            <div>
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-semibold">Utenti SFTP</h3>
+                    <button id="add-sftp-user-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg">Aggiungi Utente SFTP</button>
+                </div>
+                <table class="w-full text-sm text-left text-gray-400">
+                    <thead class="text-xs text-gray-300 uppercase bg-gray-700">
+                        <tr>
+                            <th scope="col" class="px-6 py-3">Username</th>
+                            <th scope="col" class="px-6 py-3">Password</th>
+                            <th scope="col" class="px-6 py-3">Cartella Home</th>
+                            <th scope="col" class="px-6 py-3">Azioni</th>
+                        </tr>
+                    </thead>
+                    <tbody id="sftp-users-table"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Sezione Log Recenti -->
+        <div class="bg-gray-800 rounded-lg shadow-lg p-6">
+            <h2 class="text-2xl font-semibold mb-4 border-b border-gray-700 pb-2">Log Recenti (File Forwarder)</h2>
+            <pre id="logs-content" class="bg-gray-900 rounded p-4 text-sm whitespace-pre-wrap h-96 overflow-y-auto font-mono"></pre>
+        </div>
+    </div>
+
+    <!-- Modale per la Password -->
+    <div id="password-modal" class="modal fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center hidden z-50 opacity-0">
+        <div class="bg-gray-800 rounded-lg shadow-xl p-8 w-full max-w-md">
+            <h3 id="modal-title" class="text-2xl font-bold mb-4 text-white">Conferma Operazione</h3>
+            <p id="modal-description" class="text-gray-400 mb-6">Per procedere, inserisci la password di amministrazione.</p>
+            <form id="password-form">
+                <input type="password" id="password-input" class="bg-gray-900 border-gray-700 text-white rounded-lg w-full p-2.5 mb-4" placeholder="Password" required>
+                <div id="modal-feedback" class="text-sm mb-4 h-5"></div>
+                <div class="flex justify-end space-x-4">
+                    <button type="button" id="cancel-btn" class="py-2 px-4 bg-gray-600 hover:bg-gray-700 text-white rounded-lg">Annulla</button>
+                    <button type="submit" id="confirm-btn" class="py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg">Conferma</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Modale per i Log Completi -->
+    <div id="full-logs-modal" class="modal fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center hidden z-50 opacity-0">
+        <div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-4xl h-3/4 flex flex-col">
+            <div class="flex justify-between items-center mb-4 border-b border-gray-700 pb-2">
+                <h3 id="full-logs-title" class="text-2xl font-bold text-white">Log Completi</h3>
+                <button id="close-logs-btn" class="text-gray-400 hover:text-white text-3xl leading-none">&times;</button>
+            </div>
+            <pre id="full-logs-content" class="bg-gray-900 rounded p-4 text-xs whitespace-pre-wrap overflow-y-auto font-mono flex-grow"></pre>
+        </div>
+    </div>
+
+    <!-- Modale per Aggiungere/Modificare Utente -->
+    <div id="user-modal" class="modal fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center hidden z-50 opacity-0">
+        <div class="bg-gray-800 rounded-lg shadow-xl p-8 w-full max-w-md">
+            <h3 id="user-modal-title" class="text-2xl font-bold mb-6 text-white">Aggiungi Utente</h3>
+            <form id="user-form">
+                <input type="hidden" id="user-type">
+                <input type="hidden" id="original-username">
+                <div class="mb-4">
+                    <label for="username-input" class="block mb-2 text-sm font-medium text-gray-300">Username</label>
+                    <input type="text" id="username-input" class="bg-gray-700 border border-gray-600 text-white rounded-lg w-full p-2.5" required>
+                </div>
+                <div class="mb-4">
+                    <label for="password-input-user" class="block mb-2 text-sm font-medium text-gray-300">Password</label>
+                    <input type="text" id="password-input-user" class="bg-gray-700 border border-gray-600 text-white rounded-lg w-full p-2.5" required>
+                </div>
+                <div class="mb-6">
+                    <label for="homedir-input" class="block mb-2 text-sm font-medium text-gray-300">Cartella Home</label>
+                    <input type="text" id="homedir-input" class="bg-gray-700 border border-gray-600 text-white rounded-lg w-full p-2.5" required>
+                </div>
+                <div class="flex justify-end space-x-4">
+                    <button type="button" id="cancel-user-btn" class="py-2 px-4 bg-gray-600 hover:bg-gray-700 text-white rounded-lg">Annulla</button>
+                    <button type="submit" class="py-2 px-4 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg">Salva</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <script>
+        // Variabili globali
+        let ftpUsers = [];
+        let sftpUsers = [];
+        let currentAction = null;
+        let currentTarget = null;
+        let forwarderStatus = 'unknown';
+
+        const containerDisplayNames = { 'ftp_server': 'Server FTP', 'sftp_server': 'Server SFTP', 'file_forwarder': 'Inoltratore File' };
+
+        // Elementi del DOM
+        const passwordModal = document.getElementById('password-modal');
+        const userModal = document.getElementById('user-modal');
+        const fullLogsModal = document.getElementById('full-logs-modal');
+        const adminActionButtons = document.querySelectorAll('.admin-action-btn');
+        const toggleForwarderBtn = document.getElementById('toggle-forwarder-btn');
+        
+        function showModal(modal) {
+            modal.classList.remove('hidden');
+            setTimeout(() => modal.classList.remove('opacity-0'), 10);
+        }
+
+        function hideModal(modal) {
+            modal.classList.add('opacity-0');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                const passwordInput = document.getElementById('password-input');
+                if(passwordInput) passwordInput.value = '';
+                const modalFeedback = document.getElementById('modal-feedback');
+                if(modalFeedback) modalFeedback.textContent = '';
+            }, 300);
+        }
+
+        async function performAdminAction(action, target, password) {
+            const feedbackEl = document.getElementById('modal-feedback');
+            const confirmBtn = document.getElementById('confirm-btn');
+            
+            confirmBtn.disabled = true;
+            confirmBtn.textContent = 'In corso...';
+            feedbackEl.textContent = '';
+            
+            try {
+                const response = await fetch('/api/admin-action', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action, target, password }),
+                });
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.error || 'Errore sconosciuto');
+
+                if (action === 'get_full_logs') {
+                    document.getElementById('full-logs-title').textContent = `Log Completi - ${containerDisplayNames[target]}`;
+                    document.getElementById('full-logs-content').textContent = result.logs;
+                    hideModal(passwordModal);
+                    showModal(fullLogsModal);
+                } else {
+                    feedbackEl.classList.remove('text-red-400');
+                    feedbackEl.classList.add('text-green-400');
+                    feedbackEl.textContent = result.message || 'Azione completata con successo.';
+                    setTimeout(() => hideModal(passwordModal), 2000);
+                }
+            } catch (error) {
+                feedbackEl.classList.remove('text-green-400');
+                feedbackEl.classList.add('text-red-400');
+                feedbackEl.textContent = `Errore: ${error.message}`;
+            } finally {
+                confirmBtn.disabled = false;
+                confirmBtn.textContent = 'Conferma';
+                fetchStatus(); // Aggiorna lo stato dopo ogni azione
+            }
+        }
+
+        async function fetchStatus() {
+            try {
+                const response = await fetch('/api/status');
+                const statuses = await response.json();
+                const grid = document.getElementById('status-grid');
+                grid.innerHTML = '';
+                Object.entries(statuses).forEach(([name, status]) => {
+                    grid.innerHTML += `<div class="bg-gray-700 p-4 rounded-lg flex items-center justify-between"><span class="font-medium text-lg">${containerDisplayNames[name] || name}</span><span class="flex items-center text-sm font-semibold"><span class="status-dot status-${status}"></span>${status ? status.toUpperCase() : 'N/D'}</span></div>`;
+                    if (name === 'file_forwarder') {
+                        forwarderStatus = status;
+                        toggleForwarderBtn.textContent = (status === 'running') ? 'Pausa Inoltro' : 'Riprendi Inoltro';
+                        toggleForwarderBtn.classList.toggle('bg-yellow-600', status === 'running');
+                        toggleForwarderBtn.classList.toggle('hover:bg-yellow-700', status === 'running');
+                        toggleForwarderBtn.classList.toggle('bg-green-600', status !== 'running');
+                        toggleForwarderBtn.classList.toggle('hover:bg-green-700', status !== 'running');
+                    }
+                });
+            } catch (error) {
+                console.error('Errore stato:', error);
+            }
+        }
+
+        async function fetchLogs() {
+            try {
+                const response = await fetch('/api/logs/file_forwarder');
+                const data = await response.json();
+                document.getElementById('logs-content').textContent = data.logs || 'Nessun log da mostrare.';
+            } catch (error) {
+                console.error('Errore log:', error);
+            }
+        }
+        
+        async function fetchUsers() {
+            try {
+                const response = await fetch('/api/users');
+                const users = await response.json();
+                ftpUsers = users.filter(u => u.type === 'ftp');
+                sftpUsers = users.filter(u => u.type === 'sftp');
+                populateUserTables();
+            } catch (error) {
+                console.error("Errore nel recupero utenti:", error);
+            }
+        }
+        
+        function populateUserTables() {
+            const ftpTable = document.getElementById('ftp-users-table');
+            const sftpTable = document.getElementById('sftp-users-table');
+            ftpTable.innerHTML = '';
+            sftpTable.innerHTML = '';
+
+            ftpUsers.forEach((user, index) => {
+                ftpTable.innerHTML += `<tr class="bg-gray-800 border-b border-gray-700">
+                        <td class="px-6 py-4">${user.username}</td><td class="px-6 py-4">********</td>
+                        <td class="px-6 py-4 font-mono">${user.homedir}</td>
+                        <td class="px-6 py-4"><button class="edit-btn text-blue-400 hover:text-blue-300 mr-4" data-type="ftp" data-index="${index}">Modifica</button><button class="delete-btn text-red-400 hover:text-red-300" data-type="ftp" data-index="${index}">Rimuovi</button></td></tr>`;
+            });
+            sftpUsers.forEach((user, index) => {
+                sftpTable.innerHTML += `<tr class="bg-gray-800 border-b border-gray-700">
+                        <td class="px-6 py-4">${user.username}</td><td class="px-6 py-4">********</td>
+                        <td class="px-6 py-4 font-mono">${user.homedir}</td>
+                        <td class="px-6 py-4"><button class="edit-btn text-blue-400 hover:text-blue-300 mr-4" data-type="sftp" data-index="${index}">Modifica</button><button class="delete-btn text-red-400 hover:text-red-300" data-type="sftp" data-index="${index}">Rimuovi</button></td></tr>`;
+            });
+        }
+
+        function openUserModal(type, user = null) {
+            document.getElementById('user-modal-title').textContent = user ? 'Modifica Utente' : `Aggiungi Utente ${type.toUpperCase()}`;
+            document.getElementById('user-type').value = type;
+            document.getElementById('original-username').value = user ? user.username : '';
+            document.getElementById('username-input').value = user ? user.username : '';
+            document.getElementById('username-input').disabled = !!user;
+            document.getElementById('password-input-user').value = user ? user.password : '';
+            document.getElementById('homedir-input').value = user ? user.homedir : (type === 'ftp' ? '/home/vsftpd/new_user' : '/home/new_user/upload');
+            showModal(userModal);
+        }
+
+        document.getElementById('password-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const password = document.getElementById('password-input').value;
+             if (currentAction === 'manage_users') {
+                 if (password === 'Amendola2025!') {
+                     document.getElementById('user-management-section').style.display = 'block';
+                     fetchUsers();
+                     hideModal(passwordModal);
+                 } else {
+                     document.getElementById('modal-feedback').textContent = 'Password non valida.';
+                 }
+             } else {
+                performAdminAction(currentAction, currentTarget, password);
+             }
+        });
+        
+        document.getElementById('user-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const type = document.getElementById('user-type').value;
+            const originalUsername = document.getElementById('original-username').value;
+            const updatedUser = {
+                username: document.getElementById('username-input').value,
+                password: document.getElementById('password-input-user').value,
+                homedir: document.getElementById('homedir-input').value,
+            };
+            let userList = (type === 'ftp') ? [...ftpUsers] : [...sftpUsers];
+            if (originalUsername) {
+                const index = userList.findIndex(u => u.username === originalUsername);
+                if (index > -1) userList[index] = updatedUser;
+            } else {
+                userList.push(updatedUser);
+            }
+            currentAction = (type === 'ftp') ? 'update_ftp_users' : 'update_sftp_users';
+            currentTarget = { users: userList };
+            hideModal(userModal);
+            showModal(passwordModal);
+        });
+
+        document.addEventListener('click', (e) => {
+            const targetButton = e.target.closest('.admin-action-btn');
+            if (targetButton) {
+                currentAction = targetButton.dataset.action;
+                if (currentAction === 'restart_service') {
+                    currentTarget = document.getElementById('restart-select').value;
+                } else if (currentAction === 'get_full_logs') {
+                    currentTarget = document.getElementById('logs-select').value;
+                } else if (currentAction === 'toggle_forwarder') {
+                    currentTarget = (forwarderStatus === 'running') ? 'stop' : 'start';
+                } else {
+                    currentTarget = null;
+                }
+                document.getElementById('modal-title').textContent = `Conferma: ${targetButton.textContent.trim()}`;
+                showModal(passwordModal);
+            }
+
+            if (e.target.classList.contains('edit-btn')) {
+                const type = e.target.dataset.type;
+                const index = e.target.dataset.index;
+                const user = (type === 'ftp') ? ftpUsers[index] : sftpUsers[index];
+                openUserModal(type, user);
+            }
+            if (e.target.classList.contains('delete-btn')) {
+                if (confirm('Sei sicuro di voler rimuovere questo utente?')) {
+                    const type = e.target.dataset.type;
+                    const index = parseInt(e.target.dataset.index, 10);
+                    let userList = (type === 'ftp') ? [...ftpUsers] : [...sftpUsers];
+                    userList.splice(index, 1);
+                    currentAction = (type === 'ftp') ? 'update_ftp_users' : 'update_sftp_users';
+                    currentTarget = { users: userList };
+                    showModal(passwordModal);
+                }
+            }
+        });
+
+        document.getElementById('add-ftp-user-btn').addEventListener('click', () => openUserModal('ftp'));
+        document.getElementById('add-sftp-user-btn').addEventListener('click', () => openUserModal('sftp'));
+        document.getElementById('cancel-user-btn').addEventListener('click', () => hideModal(userModal));
+        document.getElementById('cancel-btn').addEventListener('click', () => hideModal(passwordModal));
+        document.getElementById('close-logs-btn').addEventListener('click', () => hideModal(fullLogsModal));
+
+        // Funzione per recuperare e mostrare lo spazio disponibile su disco
+        async function fetchDiskSpace() {
+            try {
+                const response = await fetch('/api/disk-space');
+                const data = await response.json();
+                const infoDiv = document.getElementById('disk-space-info');
+                const chartDiv = document.getElementById('disk-space-chart');
+                const usageBar = document.getElementById('disk-usage-bar');
+                
+                if (data.error) {
+                    infoDiv.innerHTML = `<p class="text-red-400">Errore: ${data.error}</p>`;
+                    chartDiv.classList.add('hidden');
+                    return;
+                }
+
+                // Aggiorna le informazioni testuali
+                infoDiv.innerHTML = `
+                    <p><strong class="font-semibold text-white w-36 inline-block">Spazio totale:</strong> ${data.total_gb} GB</p>
+                    <p><strong class="font-semibold text-white w-36 inline-block">Spazio utilizzato:</strong> ${data.used_gb} GB</p>
+                    <p><strong class="font-semibold text-white w-36 inline-block">Spazio libero:</strong> ${data.free_gb} GB</p>
+                    <p><strong class="font-semibold text-white w-36 inline-block">Percentuale uso:</strong> ${data.usage_percent}%</p>
+                `;
+                
+                // Aggiungi il grafico
+                chartDiv.classList.remove('hidden');
+                infoDiv.appendChild(chartDiv);
+                
+                // Aggiorna la barra di utilizzo
+                usageBar.style.width = `${data.usage_percent}%`;
+                
+                // Cambia il colore della barra in base alla percentuale di utilizzo
+                if (data.usage_percent < 50) {
+                    usageBar.classList.remove('bg-yellow-500', 'bg-red-500');
+                    usageBar.classList.add('bg-green-500');
+                } else if (data.usage_percent < 80) {
+                    usageBar.classList.remove('bg-green-500', 'bg-red-500');
+                    usageBar.classList.add('bg-yellow-500');
+                } else {
+                    usageBar.classList.remove('bg-green-500', 'bg-yellow-500');
+                    usageBar.classList.add('bg-red-500');
+                }
+
+            } catch (error) {
+                console.error('Errore durante il recupero dello spazio su disco:', error);
+                document.getElementById('disk-space-info').innerHTML = '<p class="text-red-400">Impossibile caricare le informazioni sullo spazio su disco.</p>';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchStatus();
+            fetchLogs();
+            fetchDiskSpace(); // Chiamata iniziale
+            
+            setInterval(fetchStatus, 5000);
+            setInterval(fetchLogs, 5000);
+            setInterval(fetchDiskSpace, 5000); // Aggiorna ogni 5 secondi
+        });
+    </script>
+</body>
+</html>

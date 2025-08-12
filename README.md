@@ -1,6 +1,6 @@
 # FileFlow-Orchestrator: An Enterprise FTP/SFTP Gateway
 
-**FileFlow-Orchestrator** is a robust, production-ready file transfer gateway designed for complex enterprise environments. Developed for a real-world client, this project showcases advanced skills in DevOps, automation, and secure systems architecture using Docker Compose, Python (Flask), and modern Linux administration practices.
+**FileFlow-Orchestrator** is a robust, production-ready file transfer gateway designed for complex enterprise environments. Developed for a real-world client.
 
 It provides a complete, multi-container solution for hosting a secure and flexible file transfer gateway. It is designed to handle complex, real-world business workflows by offering both **FTP** and **SFTP** services, along with an automated file-forwarding system and a powerful web-based administrative dashboard. The entire environment is orchestrated via a single `docker-compose.yml` file, making it easy to deploy, manage, and scale.
 
